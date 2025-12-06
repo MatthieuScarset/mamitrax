@@ -1,6 +1,21 @@
 # Mamitrax 🛒💨
 
+![Mamitrax Game Screenshot](screenshot.png)
+
 A hilarious horizontal racing game where you compete against grumpy boomer shoppers to reach the supermarket checkout first!
+
+## TL;DR - Quick Start 🚀
+
+**Want to play right now?**
+
+1. Download this folder to your computer
+2. Open a terminal/command prompt in the folder
+3. Type: `python main.py`
+4. Play! Use arrow keys or WASD to move, SPACE to jump
+
+That's it! The game works out of the box with simple graphics. If you want fancy AI-generated characters, see the optional steps below.
+
+---
 
 ## Features
 
