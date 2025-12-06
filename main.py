@@ -2,6 +2,7 @@ import pygame
 import random
 import sys
 import os
+import json
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Tuple, Optional
@@ -31,7 +32,7 @@ BROWN = (139, 69, 19)
 TAN = (210, 180, 140)
 
 # Game settings
-PLAYER_SPEED = 4.5
+PLAYER_SPEED = 5
 RIVAL_BASE_SPEED = 4
 GRAVITY = 0.8
 JUMP_POWER = -20
@@ -71,6 +72,16 @@ class Item:
     color: Tuple[int, int, int]
 
 
+@dataclass
+class Trap:
+    x: float
+    y: float
+    width: int
+    height: int
+    trap_type: str  # "slippery_floor", "banana_peel", "yelling_karen"
+    color: Tuple[int, int, int]
+
+
 class MamitraxGame:
     def __init__(self):
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -79,9 +90,17 @@ class MamitraxGame:
         self.font = pygame.font.Font(None, 36)
         self.small_font = pygame.font.Font(None, 24)
         self.tiny_font = pygame.font.Font(None, 18)
+        self.big_font = pygame.font.Font(None, 72)
+        self.promo_font = pygame.font.Font(None, 28)
         
         # Load images
         self.images = self.load_images()
+        
+        # Load promotional texts
+        self.promos = self.load_promos()
+        self.supermarket_name = self.promos.get('supermarket_name', 'MAMITRAX')
+        self.promo_texts = self.promos.get('promos', [])
+        random.shuffle(self.promo_texts)  # Randomize order
         
         # Game state
         self.running = True
@@ -90,15 +109,20 @@ class MamitraxGame:
         self.items_collected = 0
         self.camera_x = 0
         
+        # Boost tracking
+        self.boost_active = False
+        self.boost_start_time = 0
+        self.boost_duration = 0
+        
         # Ground level
         self.ground_y = SCREEN_HEIGHT - 80
         
         # Player
         self.player = Racer(
             x=100,
-            y=self.ground_y - 50,
-            width=40,
-            height=50,
+            y=self.ground_y - 75,
+            width=60,
+            height=75,
             speed=PLAYER_SPEED,
             color=GREEN,
             entity_type=EntityType.PLAYER,
@@ -113,6 +137,15 @@ class MamitraxGame:
         # Items to collect
         self.items: List[Item] = []
         self.spawn_items()
+        
+        # Traps (slow down player)
+        self.traps: List[Trap] = []
+        self.spawn_traps()
+        
+        # Trap effect tracking
+        self.trap_active = False
+        self.trap_start_time = 0
+        self.trap_duration = 2000  # 2 seconds
         
         # Obstacles (shelves, carts, etc)
         self.obstacles: List[pygame.Rect] = []
@@ -145,7 +178,7 @@ class MamitraxGame:
         }
         
         for name, path in char_paths.items():
-            images['characters'][name] = load_image(path, 60, 80)
+            images['characters'][name] = load_image(path, 90, 120)
         
         # Load item sprites
         item_paths = {
@@ -177,6 +210,31 @@ class MamitraxGame:
             images['ui'][name] = load_image(path, w, h)
         
         return images
+    
+    def load_promos(self):
+        """Load promotional texts from JSON file"""
+        try:
+            with open('promos.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            print("⚠️  promos.json not found. Run 'python generate_promos.py' to create it.")
+            # Fallback promos
+            return {
+                'supermarket_name': 'MAMITRAX',
+                'promos': [
+                    "2 FOR 1: Complaining about millennials - Now 100% FREE!",
+                    "SPECIAL: Reading glasses on every aisle",
+                    "MEGA SALE: Facebook conspiracy theories",
+                    "HOT DEAL: Patience lessons for the young",
+                    "LIMITED: Newspapers - Remember paper?",
+                ]
+            }
+        except json.JSONDecodeError:
+            print("⚠️  Error reading promos.json. Using defaults.")
+            return {
+                'supermarket_name': 'MAMITRAX',
+                'promos': ["SPECIAL OFFERS INSIDE!"]
+            }
 
     def spawn_rivals(self):
         """Spawn rival boomer racers with different personalities"""
@@ -190,9 +248,9 @@ class MamitraxGame:
         for i, (entity_type, name, color, speed) in enumerate(rival_types):
             rival = Racer(
                 x=80 + random.randint(-20, 20),
-                y=self.ground_y - 50,
-                width=40,
-                height=50,
+                y=self.ground_y - 75,
+                width=60,
+                height=75,
                 speed=speed,
                 color=color,
                 entity_type=entity_type,
@@ -209,7 +267,7 @@ class MamitraxGame:
             ("energy_drink", RED, 8),
         ]
         
-        for x in range(500, FINISH_LINE, 300):
+        for x in range(500, FINISH_LINE, 600):  # Reduced frequency: 300 -> 600
             # Random vertical position
             y_positions = [
                 self.ground_y - 30,  # on ground
@@ -229,9 +287,30 @@ class MamitraxGame:
             )
             self.items.append(item)
 
+    def spawn_traps(self):
+        """Spawn traps that slow down the player"""
+        trap_types = [
+            ("slippery_floor", LIGHT_BLUE, 50, 30),
+            ("banana_peel", YELLOW, 25, 15),
+            ("yelling_karen", PINK, 40, 60),
+        ]
+        
+        for x in range(800, FINISH_LINE, 700):
+            trap_type, color, width, height = random.choice(trap_types)
+            
+            trap = Trap(
+                x=x + random.randint(-100, 100),
+                y=self.ground_y - height,
+                width=width,
+                height=height,
+                trap_type=trap_type,
+                color=color
+            )
+            self.traps.append(trap)
+
     def spawn_obstacles(self):
         """Spawn obstacles like shelves and carts"""
-        for x in range(800, FINISH_LINE, 400):
+        for x in range(800, FINISH_LINE, 800):  # Reduced frequency: 400 -> 800
             # Shopping cart obstacle
             obstacle = pygame.Rect(
                 x + random.randint(-100, 100),
@@ -296,6 +375,24 @@ class MamitraxGame:
         # Update camera to follow player
         self.camera_x = self.player.x - 200
 
+    def check_boost_expiration(self):
+        """Check if boost duration has expired and reset speed"""
+        if self.boost_active:
+            current_time = pygame.time.get_ticks()
+            if current_time - self.boost_start_time >= self.boost_duration:
+                # Boost expired, reset to base speed
+                self.player.speed = self.player.base_speed
+                self.boost_active = False
+    
+    def check_trap_expiration(self):
+        """Check if trap slow effect has expired and reset speed"""
+        if self.trap_active:
+            current_time = pygame.time.get_ticks()
+            if current_time - self.trap_start_time >= self.trap_duration:
+                # Trap expired, reset to base speed
+                self.player.speed = self.player.base_speed
+                self.trap_active = False
+    
     def check_collisions(self):
         """Check for collisions with items and obstacles"""
         player_rect = pygame.Rect(self.player.x, self.player.y, 
@@ -312,9 +409,25 @@ class MamitraxGame:
                 if item.item_type == "coin":
                     pass  # Just counts towards score
                 elif item.item_type == "speed_boost":
-                    self.player.speed = min(self.player.speed + 1, 12)
+                    self.boost_active = True
+                    self.boost_start_time = pygame.time.get_ticks()
+                    self.boost_duration = random.randint(1000, 3000)  # 1-3 seconds
+                    self.player.speed = min(self.player.speed + 2, 12)
                 elif item.item_type == "energy_drink":
-                    self.player.speed = self.player.base_speed + 3
+                    self.boost_active = True
+                    self.boost_start_time = pygame.time.get_ticks()
+                    self.boost_duration = random.randint(1000, 3000)  # 1-3 seconds
+                    self.player.speed = self.player.base_speed + 4
+        
+        # Check collision with traps (slows you down for 2 seconds)
+        for trap in self.traps[:]:
+            trap_rect = pygame.Rect(trap.x, trap.y, trap.width, trap.height)
+            if player_rect.colliderect(trap_rect):
+                if not self.trap_active:  # Don't re-trigger if already trapped
+                    self.traps.remove(trap)
+                    self.trap_active = True
+                    self.trap_start_time = pygame.time.get_ticks()
+                    self.player.speed = max(self.player.base_speed * 0.3, 1.5)  # 30% speed
         
         # Check collision with obstacles (slows you down)
         for obstacle in self.obstacles:
@@ -333,9 +446,69 @@ class MamitraxGame:
                     self.won = False
 
     def draw_background(self):
-        """Draw the supermarket with aisles"""
+        """Draw the supermarket with big signage"""
         # Simple ceiling
         self.screen.fill((240, 240, 245))
+        
+        # Big supermarket name and promo texts in the background
+        text_spacing = 800
+        for i, x in enumerate(range(int(-self.camera_x * 0.15) % text_spacing - text_spacing, SCREEN_WIDTH + text_spacing, text_spacing)):
+            # Alternate between supermarket name and promo text
+            if i % 2 == 0:
+                # Big supermarket name
+                name_text = self.big_font.render(self.supermarket_name, True, BLACK)
+                name_rect = name_text.get_rect(center=(x, 180))
+                
+                # Background rectangle for readability
+                bg_rect = name_rect.inflate(40, 20)
+                pygame.draw.rect(self.screen, (255, 255, 255, 230), bg_rect, border_radius=10)
+                pygame.draw.rect(self.screen, BLACK, bg_rect, 4, border_radius=10)
+                
+                # Draw name
+                self.screen.blit(name_text, name_rect)
+                
+                # Tagline under it
+                tagline = self.small_font.render("Where Boomers Shop!", True, BLACK)
+                tagline_rect = tagline.get_rect(center=(x, 220))
+                self.screen.blit(tagline, tagline_rect)
+            else:
+                # Random promo text
+                if self.promo_texts:
+                    promo_index = (i // 2) % len(self.promo_texts)
+                    promo = self.promo_texts[promo_index]
+                    
+                    # Wrap text if too long
+                    max_width = 600
+                    words = promo.split()
+                    lines = []
+                    current_line = []
+                    
+                    for word in words:
+                        test_line = ' '.join(current_line + [word])
+                        test_surface = self.promo_font.render(test_line, True, BLACK)
+                        if test_surface.get_width() <= max_width:
+                            current_line.append(word)
+                        else:
+                            if current_line:
+                                lines.append(' '.join(current_line))
+                            current_line = [word]
+                    if current_line:
+                        lines.append(' '.join(current_line))
+                    
+                    # Draw promo text
+                    total_height = len(lines) * 35
+                    start_y = 180 - total_height // 2
+                    
+                    for line_idx, line in enumerate(lines):
+                        promo_text = self.promo_font.render(line, True, BLACK)
+                        promo_rect = promo_text.get_rect(center=(x, start_y + line_idx * 35))
+                        
+                        # Background for readability
+                        bg_rect = promo_rect.inflate(30, 15)
+                        pygame.draw.rect(self.screen, (255, 255, 200), bg_rect, border_radius=8)
+                        pygame.draw.rect(self.screen, BLACK, bg_rect, 3, border_radius=8)
+                        
+                        self.screen.blit(promo_text, promo_rect)
         
         # Ceiling lights (simple and clean)
         light_spacing = 200
@@ -359,13 +532,111 @@ class MamitraxGame:
             pygame.draw.rect(self.screen, base_color, (x, self.ground_y, tile_width, tile_height))
             pygame.draw.rect(self.screen, (200, 200, 200), (x, self.ground_y, tile_width, tile_height), 1)
         
-        # Draw only ONE layer of shelves (simpler)
-        shelf_spacing = 220
-        for x in range(int(-self.camera_x * 0.6) % shelf_spacing - shelf_spacing, SCREEN_WIDTH + shelf_spacing, shelf_spacing):
-            self.draw_shelf(x, self.ground_y - 150, 70, 120, 1.0)
+        # Fruit stands and special displays (foreground layer)
+        stand_spacing = 600
+        for x in range(int(-self.camera_x * 0.7) % stand_spacing - stand_spacing, SCREEN_WIDTH + stand_spacing, stand_spacing):
+            stand_type = int((x + self.camera_x) / stand_spacing) % 3
+            if stand_type == 0:
+                self.draw_fruit_stand(x, self.ground_y - 100)
+            elif stand_type == 1:
+                self.draw_demo_table(x, self.ground_y - 90)
+            else:
+                self.draw_shelf(x, self.ground_y - 150, 70, 120, 1.0)
         
         # Draw ground line
         pygame.draw.line(self.screen, (180, 180, 180), (0, self.ground_y), (SCREEN_WIDTH, self.ground_y), 3)
+    
+    def draw_fruit_stand(self, x, y):
+        """Draw a fruit and vegetable stand"""
+        # Wooden base/table
+        pygame.draw.rect(self.screen, (139, 90, 43), (x, y + 60, 90, 40))
+        pygame.draw.rect(self.screen, (101, 67, 33), (x, y + 60, 90, 40), 3)
+        
+        # Crate boxes
+        crate_color = (160, 120, 80)
+        pygame.draw.rect(self.screen, crate_color, (x + 5, y, 35, 30))
+        pygame.draw.rect(self.screen, (120, 90, 60), (x + 5, y, 35, 30), 2)
+        pygame.draw.rect(self.screen, crate_color, (x + 50, y, 35, 30))
+        pygame.draw.rect(self.screen, (120, 90, 60), (x + 50, y, 35, 30), 2)
+        
+        # Fruits (left crate - apples/red)
+        fruit_positions = [(x + 12, y + 8), (x + 20, y + 8), (x + 28, y + 8),
+                          (x + 12, y + 18), (x + 20, y + 18), (x + 28, y + 18)]
+        for fx, fy in fruit_positions:
+            pygame.draw.circle(self.screen, (220, 20, 20), (fx, fy), 6)
+            pygame.draw.circle(self.screen, (180, 10, 10), (fx - 2, fy - 2), 2)
+        
+        # Vegetables (right crate - green)
+        for fx, fy in [(x + 57, y + 8), (x + 65, y + 8), (x + 73, y + 8),
+                       (x + 57, y + 18), (x + 65, y + 18), (x + 73, y + 18)]:
+            pygame.draw.circle(self.screen, (50, 180, 50), (fx, fy), 6)
+            pygame.draw.circle(self.screen, (30, 140, 30), (fx - 2, fy - 2), 2)
+        
+        # Price signs
+        pygame.draw.rect(self.screen, (255, 255, 200), (x + 8, y + 32, 25, 12))
+        pygame.draw.rect(self.screen, BLACK, (x + 8, y + 32, 25, 12), 1)
+        pygame.draw.rect(self.screen, (255, 255, 200), (x + 53, y + 32, 25, 12))
+        pygame.draw.rect(self.screen, BLACK, (x + 53, y + 32, 25, 12), 1)
+        
+        # Second row of crates
+        pygame.draw.rect(self.screen, crate_color, (x + 5, y + 50, 35, 30))
+        pygame.draw.rect(self.screen, (120, 90, 60), (x + 5, y + 50, 35, 30), 2)
+        pygame.draw.rect(self.screen, crate_color, (x + 50, y + 50, 35, 30))
+        pygame.draw.rect(self.screen, (120, 90, 60), (x + 50, y + 50, 35, 30), 2)
+        
+        # Oranges (bottom left)
+        for fx, fy in [(x + 12, y + 58), (x + 20, y + 58), (x + 28, y + 58),
+                       (x + 12, y + 68), (x + 20, y + 68), (x + 28, y + 68)]:
+            pygame.draw.circle(self.screen, (255, 165, 0), (fx, fy), 6)
+            pygame.draw.circle(self.screen, (220, 140, 0), (fx - 2, fy - 2), 2)
+        
+        # Bananas (bottom right - yellow)
+        for fx, fy in [(x + 57, y + 58), (x + 65, y + 58), (x + 73, y + 58),
+                       (x + 57, y + 68), (x + 65, y + 68), (x + 73, y + 68)]:
+            pygame.draw.ellipse(self.screen, (255, 230, 0), (fx - 4, fy - 3, 12, 6))
+            pygame.draw.ellipse(self.screen, (220, 200, 0), (fx - 4, fy - 3, 12, 6), 1)
+    
+    def draw_demo_table(self, x, y):
+        """Draw a demonstration table with a person giving free samples"""
+        # Table
+        pygame.draw.rect(self.screen, (200, 180, 160), (x, y + 50, 80, 50))
+        pygame.draw.rect(self.screen, (150, 130, 110), (x, y + 50, 80, 50), 3)
+        
+        # Tablecloth
+        pygame.draw.rect(self.screen, (255, 255, 255), (x + 5, y + 45, 70, 10))
+        
+        # Sample plates
+        for px in [x + 15, x + 35, x + 55]:
+            pygame.draw.circle(self.screen, (230, 230, 230), (px, y + 60), 8)
+            pygame.draw.circle(self.screen, (200, 200, 200), (px, y + 60), 8, 1)
+            # Food sample (cheese cubes)
+            pygame.draw.rect(self.screen, (255, 220, 100), (px - 3, y + 57, 6, 6))
+        
+        # Demonstrator person (simple stick figure style)
+        person_x = x + 40
+        person_y = y
+        
+        # Head
+        pygame.draw.circle(self.screen, (255, 220, 180), (person_x, person_y), 10)
+        pygame.draw.circle(self.screen, BLACK, (person_x, person_y), 10, 2)
+        
+        # Eyes
+        pygame.draw.circle(self.screen, BLACK, (person_x - 4, person_y - 2), 2)
+        pygame.draw.circle(self.screen, BLACK, (person_x + 4, person_y - 2), 2)
+        
+        # Smile
+        pygame.draw.arc(self.screen, BLACK, (person_x - 5, person_y - 2, 10, 8), 3.14, 0, 2)
+        
+        # Body (apron)
+        pygame.draw.rect(self.screen, (100, 180, 100), (person_x - 12, person_y + 10, 24, 35), border_radius=3)
+        
+        # Arms (holding a tray)
+        pygame.draw.line(self.screen, (255, 220, 180), (person_x - 12, person_y + 20), (person_x - 20, person_y + 30), 4)
+        pygame.draw.line(self.screen, (255, 220, 180), (person_x + 12, person_y + 20), (person_x + 20, person_y + 30), 4)
+        
+        # Sign "FREE SAMPLES!"
+        pygame.draw.rect(self.screen, (255, 200, 200), (x + 10, y + 70, 60, 15), border_radius=2)
+        pygame.draw.rect(self.screen, RED, (x + 10, y + 70, 60, 15), 2, border_radius=2)
     
     def draw_shelf(self, x, y, width, height, scale):
         """Draw a supermarket shelf with products at given scale for depth"""
@@ -533,6 +804,72 @@ class MamitraxGame:
                 pygame.draw.rect(self.screen, WHITE, 
                                (screen_x + 2, item.y + 2, item.width - 4, item.height - 4))
     
+    def draw_trap(self, trap: Trap):
+        """Draw trap with visual indicators"""
+        screen_x = trap.x - self.camera_x
+        
+        if screen_x < -100 or screen_x > SCREEN_WIDTH + 100:
+            return
+        
+        # Draw different trap types
+        if trap.trap_type == "slippery_floor":
+            # Wet floor sign
+            pygame.draw.polygon(self.screen, YELLOW, [
+                (screen_x + trap.width // 2, trap.y),
+                (screen_x + trap.width, trap.y + trap.height),
+                (screen_x, trap.y + trap.height)
+            ])
+            pygame.draw.polygon(self.screen, BLACK, [
+                (screen_x + trap.width // 2, trap.y),
+                (screen_x + trap.width, trap.y + trap.height),
+                (screen_x, trap.y + trap.height)
+            ], 2)
+            # Exclamation mark
+            pygame.draw.line(self.screen, BLACK, 
+                           (screen_x + trap.width // 2, trap.y + 8),
+                           (screen_x + trap.width // 2, trap.y + 18), 3)
+            pygame.draw.circle(self.screen, BLACK,
+                             (screen_x + trap.width // 2, trap.y + 23), 2)
+            
+        elif trap.trap_type == "banana_peel":
+            # Banana shape
+            pygame.draw.ellipse(self.screen, YELLOW, 
+                              (screen_x, trap.y, trap.width, trap.height))
+            pygame.draw.ellipse(self.screen, (200, 180, 0), 
+                              (screen_x, trap.y, trap.width, trap.height), 2)
+            # Brown spots
+            for spot_x, spot_y in [(5, 3), (15, 8), (8, 10)]:
+                pygame.draw.circle(self.screen, (100, 70, 0),
+                                 (screen_x + spot_x, trap.y + spot_y), 2)
+            
+        elif trap.trap_type == "yelling_karen":
+            # Angry face
+            pygame.draw.circle(self.screen, PINK, 
+                             (screen_x + trap.width // 2, trap.y + 20), 18)
+            pygame.draw.circle(self.screen, BLACK,
+                             (screen_x + trap.width // 2, trap.y + 20), 18, 2)
+            
+            # Angry eyes
+            pygame.draw.line(self.screen, BLACK,
+                           (screen_x + trap.width // 2 - 8, trap.y + 15),
+                           (screen_x + trap.width // 2 - 5, trap.y + 18), 2)
+            pygame.draw.line(self.screen, BLACK,
+                           (screen_x + trap.width // 2 + 5, trap.y + 18),
+                           (screen_x + trap.width // 2 + 8, trap.y + 15), 2)
+            
+            # Angry mouth (yelling)
+            pygame.draw.arc(self.screen, BLACK,
+                          (screen_x + trap.width // 2 - 8, trap.y + 20, 16, 12),
+                          0, 3.14, 3)
+            
+            # Speech bubble indicators
+            for i, offset in enumerate([35, 42, 49]):
+                size = 5 - i
+                pygame.draw.circle(self.screen, WHITE,
+                                 (screen_x + trap.width // 2 + 15, trap.y + offset - 20), size)
+                pygame.draw.circle(self.screen, BLACK,
+                                 (screen_x + trap.width // 2 + 15, trap.y + offset - 20), size, 1)
+    
     def draw_obstacles(self):
         """Draw obstacles"""
         cart_img = self.images['ui']['cart_obstacle']
@@ -657,6 +994,8 @@ class MamitraxGame:
                 # Game logic
                 self.handle_input()
                 self.update_entities()
+                self.check_boost_expiration()
+                self.check_trap_expiration()
                 self.check_collisions()
                 self.check_win_condition()
                 
@@ -665,6 +1004,10 @@ class MamitraxGame:
                 
                 # Draw obstacles
                 self.draw_obstacles()
+                
+                # Draw traps
+                for trap in self.traps:
+                    self.draw_trap(trap)
                 
                 # Draw items
                 for item in self.items:

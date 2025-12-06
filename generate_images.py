@@ -122,11 +122,11 @@ PIXEL_ART_STYLE = "16-bit pixel art style, retro video game graphics, crisp pixe
 def get_character_prompt(char_name):
     """Generate appropriate prompt for each character type"""
     prompts = {
-        'player': f"A young energetic shopper in casual clothes running with a shopping cart, {PIXEL_ART_STYLE}, white background",
-        'grumpy_grandma': f"A grumpy elderly woman with gray hair in a pink cardigan pushing a shopping cart, frowning face, {PIXEL_ART_STYLE}, white background",
-        'speedy_grandpa': f"A fast elderly man with white hair in light blue clothes running with a shopping cart, determined expression, {PIXEL_ART_STYLE}, white background",
-        'angry_karen': f"A middle-aged woman with orange clothes and a frustrated expression pushing a shopping cart quickly, determined face, {PIXEL_ART_STYLE}, white background",
-        'slow_larry': f"A slow elderly man in tan/beige clothes with a shopping cart, relaxed expression, {PIXEL_ART_STYLE}, white background",
+        'player': f"SINGLE character only: A young energetic shopper in casual clothes running with a shopping cart, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
+        'grumpy_grandma': f"SINGLE character only: A grumpy elderly woman with gray hair in a pink cardigan pushing a shopping cart, frowning face, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
+        'speedy_grandpa': f"SINGLE character only: A fast elderly man with white hair in light blue clothes running with a shopping cart, determined expression, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
+        'angry_karen': f"SINGLE character only: A middle-aged woman with orange clothes and a frustrated expression pushing a shopping cart quickly, determined face, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
+        'slow_larry': f"SINGLE character only: A slow elderly man in tan/beige clothes with a shopping cart, relaxed expression, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
     }
     
     # Return specific prompt or generic one
