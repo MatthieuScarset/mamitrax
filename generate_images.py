@@ -122,11 +122,11 @@ PIXEL_ART_STYLE = "16-bit pixel art style, retro video game graphics, crisp pixe
 def get_character_prompt(char_name):
     """Generate appropriate prompt for each character type"""
     prompts = {
-        'player': f"SINGLE character only: A young energetic shopper in casual clothes running with a shopping cart, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
-        'grumpy_grandma': f"SINGLE character only: A grumpy elderly woman with gray hair in a pink cardigan pushing a shopping cart, frowning face, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
-        'speedy_grandpa': f"SINGLE character only: A fast elderly man with white hair in light blue clothes running with a shopping cart, determined expression, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
-        'angry_karen': f"SINGLE character only: A middle-aged woman with orange clothes and a frustrated expression pushing a shopping cart quickly, determined face, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
-        'slow_larry': f"SINGLE character only: A slow elderly man in tan/beige clothes with a shopping cart, relaxed expression, exactly one person, {PIXEL_ART_STYLE}, white background, isolated character sprite",
+        'player': f"ONE SINGLE CHARACTER ONLY - NOT TWO - JUST ONE: A young energetic shopper in casual clothes running with a shopping cart, EXACTLY ONE PERSON ALONE, solo character, {PIXEL_ART_STYLE}, transparent background, isolated individual character sprite, no other people, no background elements, single person only",
+        'grumpy_grandma': f"ONE SINGLE CHARACTER ONLY - NOT TWO - JUST ONE: A grumpy elderly woman with gray hair in a pink cardigan pushing a shopping cart, frowning face, EXACTLY ONE PERSON ALONE, solo character, {PIXEL_ART_STYLE}, transparent background, isolated individual character sprite, no other people, no background elements, single person only",
+        'speedy_grandpa': f"ONE SINGLE CHARACTER ONLY - NOT TWO - JUST ONE: A fast elderly man with white hair in light blue clothes running with a shopping cart, determined expression, EXACTLY ONE PERSON ALONE, solo character, {PIXEL_ART_STYLE}, transparent background, isolated individual character sprite, no other people, no background elements, single person only",
+        'angry_karen': f"ONE SINGLE CHARACTER ONLY - NOT TWO - JUST ONE: A middle-aged woman with orange clothes and a frustrated expression pushing a shopping cart quickly, determined face, EXACTLY ONE PERSON ALONE, solo character, {PIXEL_ART_STYLE}, transparent background, isolated individual character sprite, no other people, no background elements, single person only",
+        'slow_larry': f"ONE SINGLE CHARACTER ONLY - NOT TWO - JUST ONE: A slow elderly man in tan/beige clothes with a shopping cart, relaxed expression, EXACTLY ONE PERSON ALONE, solo character, {PIXEL_ART_STYLE}, transparent background, isolated individual character sprite, no other people, no background elements, single person only",
     }
     
     # Return specific prompt or generic one
@@ -141,9 +141,9 @@ def get_character_prompt(char_name):
 def get_item_prompt(item_name):
     """Generate appropriate prompt for each item type"""
     prompts = {
-        'coin': f"A shiny golden coin with a dollar sign, glowing effect, {PIXEL_ART_STYLE}, white background",
-        'speed_boost': f"A blue forward arrow icon with speed lines, glowing effect, power-up icon, {PIXEL_ART_STYLE}, white background",
-        'energy_drink': f"A red energy drink can with lightning bolt symbol, {PIXEL_ART_STYLE}, white background",
+        'coin': f"A shiny golden coin with a dollar sign, glowing effect, {PIXEL_ART_STYLE}, transparent background, no background elements",
+        'speed_boost': f"A blue forward arrow icon with speed lines, glowing effect, power-up icon, {PIXEL_ART_STYLE}, transparent background, no background elements",
+        'energy_drink': f"A red energy drink can with lightning bolt symbol, {PIXEL_ART_STYLE}, transparent background, no background elements",
     }
     
     if item_name in prompts:
@@ -151,22 +151,22 @@ def get_item_prompt(item_name):
     else:
         # Generic fallback
         item_display = item_name.replace('_', ' ').title()
-        return f"A {item_display} collectible item, {PIXEL_ART_STYLE}, white background"
+        return f"A {item_display} collectible item, {PIXEL_ART_STYLE}, transparent background, no background elements"
 
 
 def get_ui_prompt(ui_element):
     """Generate appropriate prompt for UI elements"""
     prompts = {
-        'cart_obstacle': f"A gray metal shopping cart obstacle, {PIXEL_ART_STYLE}, white background",
-        'victory': f"A golden trophy with confetti and stars, epic victory celebration banner, bright cheerful colors, {PIXEL_ART_STYLE}",
-        'defeat': f"A sad face with dark clouds, game over screen element, somber colors, {PIXEL_ART_STYLE}",
+        'cart_obstacle': f"A gray metal shopping cart obstacle, {PIXEL_ART_STYLE}, transparent background, no background elements",
+        'victory': f"A golden trophy with confetti and stars, epic victory celebration banner, bright cheerful colors, {PIXEL_ART_STYLE}, transparent background",
+        'defeat': f"A sad face with dark clouds, game over screen element, somber colors, {PIXEL_ART_STYLE}, transparent background",
     }
     
     if ui_element in prompts:
         return prompts[ui_element]
     else:
         element_display = ui_element.replace('_', ' ').title()
-        return f"A {element_display} UI element, {PIXEL_ART_STYLE}"
+        return f"A {element_display} UI element, {PIXEL_ART_STYLE}, transparent background"
 
 
 def main():

@@ -310,15 +310,8 @@ class MamitraxGame:
 
     def spawn_obstacles(self):
         """Spawn obstacles like shelves and carts"""
-        for x in range(800, FINISH_LINE, 800):  # Reduced frequency: 400 -> 800
-            # Shopping cart obstacle
-            obstacle = pygame.Rect(
-                x + random.randint(-100, 100),
-                self.ground_y - 40,
-                50,
-                40
-            )
-            self.obstacles.append(obstacle)
+        # No obstacles - removed for cleaner gameplay
+        pass
 
     def handle_input(self):
         """Handle player input"""
@@ -368,6 +361,15 @@ class MamitraxGame:
             if rival.on_ground and random.random() < 0.02:
                 rival.velocity_y = JUMP_POWER
                 rival.on_ground = False
+            
+            # Random speed boost (1.5x for 2-4 seconds)
+            if rival.on_ground and random.random() < 0.008:  # ~0.8% chance per frame
+                rival.speed = rival.base_speed * 1.5
+                # Speed will reset after a random duration (handled below)
+            
+            # Occasionally reset speed back to base
+            if rival.speed > rival.base_speed and random.random() < 0.005:  # 0.5% chance to reset
+                rival.speed = rival.base_speed
             
             # Apply physics to rival
             self.apply_physics(rival)
@@ -429,12 +431,6 @@ class MamitraxGame:
                     self.trap_start_time = pygame.time.get_ticks()
                     self.player.speed = max(self.player.base_speed * 0.3, 1.5)  # 30% speed
         
-        # Check collision with obstacles (slows you down)
-        for obstacle in self.obstacles:
-            if player_rect.colliderect(obstacle):
-                self.player.speed = max(self.player.base_speed - 2, 2)
-                self.player.x -= 5  # Push back a bit
-
     def check_win_condition(self):
         """Check if player reached the finish line"""
         if self.player.x >= FINISH_LINE:
@@ -447,8 +443,14 @@ class MamitraxGame:
 
     def draw_background(self):
         """Draw the supermarket with big signage"""
-        # Simple ceiling
-        self.screen.fill((240, 240, 245))
+        # Sky gradient background (light blue at top, lighter at bottom)
+        for y in range(0, self.ground_y, 5):
+            progress = y / self.ground_y
+            # Light blue at top fading to very light blue
+            r = int(135 + 100 * progress)
+            g = int(206 + 44 * progress)
+            b = int(235 + 15 * progress)
+            pygame.draw.rect(self.screen, (r, g, b), (0, y, SCREEN_WIDTH, 5))
         
         # Big supermarket name and promo texts in the background
         text_spacing = 800
@@ -517,7 +519,7 @@ class MamitraxGame:
             pygame.draw.rect(self.screen, (255, 255, 240), (x + 40, 30, 120, 40), border_radius=5)
             pygame.draw.rect(self.screen, (220, 220, 200), (x + 40, 30, 120, 40), 2, border_radius=5)
         
-        # Simple floor - clean checkerboard
+        # Shiny supermarket floor - alternating tiles with shine effect
         tile_width = 80
         tile_height = SCREEN_HEIGHT - self.ground_y
         
@@ -525,12 +527,20 @@ class MamitraxGame:
             world_x = x + self.camera_x
             is_dark = (int(world_x) // tile_width) % 2 == 0
             
-            # Simple floor colors
-            base_color = (230, 230, 230) if is_dark else (245, 245, 245)
+            # Darker, more contrasting floor colors (beige/cream tones)
+            base_color = (200, 185, 160) if is_dark else (220, 205, 180)
             
             # Draw tile
             pygame.draw.rect(self.screen, base_color, (x, self.ground_y, tile_width, tile_height))
-            pygame.draw.rect(self.screen, (200, 200, 200), (x, self.ground_y, tile_width, tile_height), 1)
+            
+            # Grout lines (darker brown)
+            pygame.draw.rect(self.screen, (120, 100, 80), (x, self.ground_y, tile_width, tile_height), 2)
+            
+            # Shine effect (subtle white highlight on upper portion)
+            shine_rect = pygame.Rect(x + 5, self.ground_y + 5, tile_width - 10, tile_height // 3)
+            shine_surface = pygame.Surface((tile_width - 10, tile_height // 3), pygame.SRCALPHA)
+            pygame.draw.rect(shine_surface, (255, 255, 255, 20), (0, 0, tile_width - 10, tile_height // 3))
+            self.screen.blit(shine_surface, shine_rect)
         
         # Fruit stands and special displays (foreground layer)
         stand_spacing = 600
@@ -1002,9 +1012,6 @@ class MamitraxGame:
                 # Drawing
                 self.draw_background()
                 
-                # Draw obstacles
-                self.draw_obstacles()
-                
                 # Draw traps
                 for trap in self.traps:
                     self.draw_trap(trap)
@@ -1030,7 +1037,6 @@ class MamitraxGame:
             else:
                 # Draw game over screen
                 self.draw_background()
-                self.draw_obstacles()
                 for rival in self.rivals:
                     self.draw_racer(rival)
                 self.draw_racer(self.player)
