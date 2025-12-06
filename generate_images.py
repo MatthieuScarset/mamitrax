@@ -71,7 +71,7 @@ def extract_game_metadata():
     
     return metadata
 
-def generate_image(prompt, filename):
+def generate_image(prompt, filename, force=False):
     """Generate an image with DALL-E 3 and save it"""
     global client
     
@@ -81,7 +81,7 @@ def generate_image(prompt, filename):
     full_path = f"images/{filename}"
     
     # Check if image already exists
-    if os.path.exists(full_path):
+    if os.path.exists(full_path) and not force:
         print(f"⏭️  {filename} already exists, skipping.")
         return True
     
@@ -125,7 +125,7 @@ def get_character_prompt(char_name):
         'player': f"A young energetic shopper in casual clothes running with a shopping cart, {PIXEL_ART_STYLE}, white background",
         'grumpy_grandma': f"A grumpy elderly woman with gray hair in a pink cardigan pushing a shopping cart, frowning face, {PIXEL_ART_STYLE}, white background",
         'speedy_grandpa': f"A fast elderly man with white hair in light blue clothes running with a shopping cart, determined expression, {PIXEL_ART_STYLE}, white background",
-        'angry_karen': f"A middle-aged woman with orange clothes and an angry expression pushing a shopping cart aggressively, {PIXEL_ART_STYLE}, white background",
+        'angry_karen': f"A middle-aged woman with orange clothes and a frustrated expression pushing a shopping cart quickly, determined face, {PIXEL_ART_STYLE}, white background",
         'slow_larry': f"A slow elderly man in tan/beige clothes with a shopping cart, relaxed expression, {PIXEL_ART_STYLE}, white background",
     }
     
@@ -174,6 +174,23 @@ def main():
     
     import sys
     dry_run = '--dry-run' in sys.argv or '--preview' in sys.argv
+    force = '--force' in sys.argv or '-f' in sys.argv
+    
+    # Parse command line arguments for filtering
+    filter_folder = None
+    filter_name = None
+    
+    for arg in sys.argv[1:]:
+        if arg.startswith('--folder='):
+            filter_folder = arg.split('=')[1]
+        elif arg.startswith('--name='):
+            filter_name = arg.split('=')[1]
+        elif not arg.startswith('--') and not arg.startswith('-'):
+            # Assume it's a name if no prefix
+            if '/' in arg or arg in ['characters', 'items', 'ui']:
+                filter_folder = arg
+            else:
+                filter_name = arg
     
     if dry_run:
         print("🔍 DRY RUN MODE - No images will be generated\n")
@@ -205,6 +222,12 @@ def main():
     print(f"✅ Found {len(metadata['items'])} item types")
     print(f"✅ Found {len(metadata['ui_elements'])} UI elements")
     
+    # Show filter info
+    if filter_folder:
+        print(f"🔍 Filtering by folder: {filter_folder}")
+    if filter_name:
+        print(f"🔍 Filtering by name: {filter_name}")
+    
     if dry_run:
         print(f"\n📋 Would generate the following images:")
         print(f"   - {len(metadata['characters'])} character sprites")
@@ -217,30 +240,40 @@ def main():
         return
     
     # 1. Character images
-    print("\n=== CHARACTERS ===")
-    
-    for char_name in metadata['characters']:
-        prompt = get_character_prompt(char_name)
-        generate_image(prompt, f"characters/{char_name}.png")
+    if not filter_folder or filter_folder == 'characters':
+        print("\n=== CHARACTERS ===")
+        
+        for char_name in metadata['characters']:
+            if filter_name and char_name != filter_name:
+                continue
+            prompt = get_character_prompt(char_name)
+            generate_image(prompt, f"characters/{char_name}.png", force)
     
     # 2. Background elements - SKIPPED
     # Using procedural backgrounds for perfect tiling and better performance
-    print("\n\n=== BACKGROUNDS ===")
-    print("⏭️  Skipping background generation - using procedural rendering for better tiling")
+    if not filter_folder or filter_folder == 'backgrounds':
+        print("\n\n=== BACKGROUNDS ===")
+        print("⏭️  Skipping background generation - using procedural rendering for better tiling")
     
     # 3. Collectible items (dynamically from game)
-    print("\n\n=== ITEMS ===")
-    
-    for item_name in metadata['items'].keys():
-        prompt = get_item_prompt(item_name)
-        generate_image(prompt, f"items/{item_name}.png")
+    if not filter_folder or filter_folder == 'items':
+        print("\n\n=== ITEMS ===")
+        
+        for item_name in metadata['items'].keys():
+            if filter_name and item_name != filter_name:
+                continue
+            prompt = get_item_prompt(item_name)
+            generate_image(prompt, f"items/{item_name}.png", force)
     
     # 4. UI elements (dynamically from game)
-    print("\n\n=== UI ELEMENTS ===")
-    
-    for ui_element in metadata['ui_elements']:
-        prompt = get_ui_prompt(ui_element)
-        generate_image(prompt, f"ui/{ui_element}.png")
+    if not filter_folder or filter_folder == 'ui':
+        print("\n\n=== UI ELEMENTS ===")
+        
+        for ui_element in metadata['ui_elements']:
+            if filter_name and ui_element != filter_name:
+                continue
+            prompt = get_ui_prompt(ui_element)
+            generate_image(prompt, f"ui/{ui_element}.png", force)
     
     print("\n\n✨ GENERATION COMPLETE! ✨")
     print(f"All images are in the 'images/' folder")
@@ -248,4 +281,28 @@ def main():
 
 
 if __name__ == "__main__":
+    import sys
+    
+    # Show help if requested
+    if '--help' in sys.argv or '-h' in sys.argv:
+        print("🎨 Mamitrax Image Generator")
+        print("\nUsage:")
+        print("  python generate_images.py [options]")
+        print("\nOptions:")
+        print("  --dry-run, --preview     Preview what would be generated without API calls")
+        print("  --force, -f              Regenerate images even if they already exist")
+        print("  --folder=<name>          Generate only images in specific folder")
+        print("                           (characters, items, ui)")
+        print("  --name=<name>            Generate only specific image by name")
+        print("                           (e.g., player, angry_karen, coin)")
+        print("  -h, --help               Show this help message")
+        print("\nExamples:")
+        print("  python generate_images.py --dry-run")
+        print("  python generate_images.py --folder=characters")
+        print("  python generate_images.py --name=player")
+        print("  python generate_images.py characters")
+        print("  python generate_images.py angry_karen")
+        print("  python generate_images.py angry_karen --force")
+        sys.exit(0)
+    
     main()
